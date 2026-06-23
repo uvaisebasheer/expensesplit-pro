@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ExpenseSplit Pro - Serverless Backend
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: dotnet8
+    Architectures:
+      - x86_64
+
+Parameters:
+  Environment:
+    Type: String
+    Default: Production
+    AllowedValues:
+      - Development
+      - Production
+  DbConnectionString:
+    Type: String
+    NoEcho: true
+    Description: SQL Server connection string
+
+Resources:
+  # Lambda Function
+  ExpenseSplitApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExpenseSplitApi
+      Handler: ExpenseSplit.Api
+      CodeUri: ../backend/ExpenseSplit.Api/
+      Description: ExpenseSplit Pro API - .NET 8 Minimal API
+      Environment:
+        Variables:
+          ASPNETCORE_ENVIRONMENT: !Ref Environment
+          ConnectionStrings__DefaultConnection: !Ref DbConnectionString
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref ExpenseSplitApiGateway
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+
+  # API Gateway
+  ExpenseSplitApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ExpenseSplitApiGateway
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      Auth:
+        DefaultAuthorizer: NONE
+
+  # CloudWatch Log Group
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/ExpenseSplitApi
+      RetentionInDays: 14
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ExpenseSplitApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/'
+  LambdaFunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt ExpenseSplitApiFunction.Arn

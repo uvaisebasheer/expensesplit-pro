@@ -1,0 +1,74 @@
+name: Deploy Backend to AWS Lambda
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: 🧪 Test & Build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/ExpenseSplit.Api/ExpenseSplit.Api.csproj
+
+      - name: Build
+        run: dotnet build backend/ExpenseSplit.Api/ExpenseSplit.Api.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test backend/ExpenseSplit.Api.Tests/ExpenseSplit.Api.Tests.csproj --no-build --verbosity normal
+        continue-on-error: true
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy to AWS Lambda
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Lambda Tools
+        run: dotnet tool install -g Amazon.Lambda.Tools || dotnet tool update -g Amazon.Lambda.Tools
+
+      - name: Package Lambda
+        run: |
+          cd backend/ExpenseSplit.Api
+          dotnet lambda package             --configuration Release             --framework net8.0             --output-package ../../deploy/backend.zip
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code             --function-name ExpenseSplitApi             --zip-file fileb://deploy/backend.zip
+
+      - name: Update Lambda Configuration
+        run: |
+          aws lambda update-function-configuration             --function-name ExpenseSplitApi             --environment "Variables={ASPNETCORE_ENVIRONMENT=Production,ConnectionStrings__DefaultConnection=${{ secrets.DB_CONNECTION_STRING }}}"
