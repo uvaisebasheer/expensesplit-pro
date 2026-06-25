@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ExpenseSplit Pro - .NET 8 Minimal API
 // Author: Uvaise K B
 
-// Add services
+// services
 
 builder.Services.AddDbContext < AppDbContext > (options =>
     options.UseSqlServer(
@@ -21,14 +21,23 @@ builder.Services.AddDbContext < AppDbContext > (options =>
 
 builder.Services.AddScoped<ISettlementService, SettlementService>();
 
-// Add Swagger services 
+// Swagger services 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-// Add AWS Lambda hosting
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() 
+    { 
+        Title = "ExpenseSplit Pro API", 
+        Version = "v1",
+        Description = "Enterprise-grade expense splitting with greedy settlement optimization"
+    });
+});
+
+// AWS Lambda hosting
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
 
-// Add CORS
+//  CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
