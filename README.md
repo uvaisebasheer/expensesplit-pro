@@ -17,6 +17,13 @@
 
 ---
 
+## 📸 Screenshots
+
+| Dashboard | API Documentation |
+|-----------|-------------------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Swagger API](docs/screenshots/swagger-api.jpg) |
+
+
 ## 🚀 Overview
 
 **ExpenseSplit Pro** is a full-stack fintech application that solves the classic "who owes whom" problem using a **greedy optimization algorithm**. Built for groups of friends, roommates, or teams to track shared expenses and minimize the number of transactions needed to settle debts.
